@@ -1,0 +1,7 @@
+/uploads
+/public
+/node_modules
+/build
+/logs
+*.pem
+.env

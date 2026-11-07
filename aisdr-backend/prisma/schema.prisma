@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DB_URL")
+}
+
+enum Provider {
+  GOOGLE
+  FACEBOOK
+  CREDENTIAL
+}
+
+enum EmailStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+}
+
+enum WizaStatus {
+  QUEUED
+  FINISHED
+  FAILED
+}
+
+model users {
+  id             BigInt     @id @default(autoincrement()) 
+  avatar         String?    @db.VarChar(255)
+  firstName      String     @db.VarChar(255)
+  lastName       String     @db.VarChar(255)
+  companyName    String?    @db.VarChar(255)
+  accountType    String     @db.VarChar(255)
+  email          String     @db.VarChar(255) @unique
+  password       String?    @db.VarChar(255)
+  provider       Provider   @default(CREDENTIAL)
+  campaigns      campaigns[]
+  leads          leads[]
+  emailTemplates templates[]
+  campaignLeads  campaign_lead_pivot[]
+  wiza           wiza[]
+  knowledgebase  knowledgebase[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model campaigns {
+  id              BigInt                  @id @default(autoincrement()) 
+  name            String                  @db.VarChar(255)
+  description     String?                 @db.VarChar(255)
+  userId          BigInt                  
+  templateId      BigInt?                 
+  campaignLeads   campaign_lead_pivot[]
+  scheduledEmails scheduled_emails[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  user     users      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template templates? @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+model templates {
+  id              BigInt            @id @default(autoincrement()) 
+  name            String            @db.VarChar(255)
+  from            String            @db.VarChar(255)
+  subject         String            @db.VarChar(255)
+  body            String            @db.Text
+  userId          BigInt            
+  campaigns       campaigns[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model leads {
+  id               BigInt           @id @default(autoincrement()) 
+  firstName        String           @db.VarChar(255)
+  lastName         String?          @db.VarChar(255)
+  email            String           @db.VarChar(255)
+  company          String           @db.VarChar(255)
+  role             String           @db.VarChar(255)
+  website          String?          @db.VarChar(255)
+  phone            String?          @db.VarChar(255)
+  additionalFields Json?
+  userId           BigInt           
+  campaignLeads    campaign_lead_pivot[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([email, userId])
+}
+
+model campaign_lead_pivot {
+  id         BigInt      @id @default(autoincrement()) 
+  campaignId BigInt      
+  leadId     BigInt      
+  userId     BigInt     
+
+  campaign   campaigns   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead       leads       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user       users       @relation(fields: [userId], references: [id], onDelete: Cascade)  // Define the relation with the user model
+
+  @@unique([campaignId, leadId, userId])
+}
+
+model scheduled_emails {
+  id              BigInt       @id @default(autoincrement()) 
+  userId          BigInt       
+  campaignId      BigInt       
+  knowledgebaseId BigInt       
+  prompt          String       @db.Text       
+  fromName        String       @db.VarChar(255)       
+  fromEmail       String       @db.VarChar(255)       
+  fromDesignation String       @db.VarChar(255)       
+  status          EmailStatus  @default(PENDING)
+  sentAt          DateTime?
+  error           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  campaign        campaigns @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  knowledgebase   knowledgebase @relation(fields: [knowledgebaseId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([sentAt])
+}
+
+model wiza {
+  id               BigInt           @id @default(autoincrement())
+  listId           BigInt
+  userId           BigInt 
+  name             String           @db.VarChar(255)
+  status           WizaStatus       @default(QUEUED)
+  reportType       String           @db.VarChar(255)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user users @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model knowledgebase {
+  id               BigInt           @id @default(autoincrement())
+  title            String           @db.VarChar(255)
+  description      String?          @db.Text
+  content          String?          @db.Text
+  file             String           @db.VarChar(255)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  userId           BigInt 
+
+  user        users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emails      scheduled_emails[]
+}

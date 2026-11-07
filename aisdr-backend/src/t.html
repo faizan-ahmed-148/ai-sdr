@@ -1,0 +1,11 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.js" integrity="sha512-8BHxHDLsOHx+flIrQ0DrZcea7MkHqRU5GbTHmbdzMRnAaoCIkZ97PqZcXJkKZckMMhqfoeaJE+DNUVuyoQsO3Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+  const socket = io("http://localhost:5000?id=55", {
+    transports: ["websocket"]
+  });
+
+  socket.once('connect', ()=> console.log("connected"))
+  socket.on('message', function(message){
+    console.log(message);
+  })
+</script>

@@ -1,0 +1,40 @@
+name: Deploy Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the code from the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up SSH access to EC2 instance
+      - name: Deploy to DO
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }} # Public IP or DNS name
+          username: ${{ secrets.SSH_USER }}     # Username (e.g., ubuntu)
+          key: ${{ secrets.SSH_PRIVATE_KEY }}           # SSH Private Key stored in GitHub Secrets
+          script: |
+            # Navigate to the application directory
+            cd /home/ubuntu/aisdr-backend
+            # prisma genrate
+            npx prisma generate
+            # migrate database
+            npx prisma migrate deploy
+            # Fetch the latest code from the staging branch
+            git pull
+            # Install dependencies
+            npm install
+            # Build the application
+            npm run build
+            # Restart the PM2 process
+            pm2 restart Backend  || pm2 start npm --name "Backend" -- run start
+            # Save PM2 process for restarts
+            pm2 save
